@@ -41,3 +41,7 @@ http://127.0.0.1:8888/{GUID}
 ## 四、激活成功后进入settting后，选择【JRebel】，然后点击【Work online】按钮
 
 ![image-20230423203413737](assest/image-20230423203413737.png)
+
+
+
+lll

@@ -21,15 +21,15 @@ tar -zxvf  redis-6.0.8.tar.gz
 ## 二、安装环境
 
 ```bash
-0 yum install gcc-c++ # 一般系统已经安装好了
-1 yum -y install centos-release-scl
-2 yum -y install devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils 
+yum install gcc-c++ # 一般系统已经安装好了
+yum -y install centos-release-scl
+yum -y install devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils 
 
-4-------环境设置----------
-5 #临时有效，退出 shell 或重启会恢复原 gcc 版本
-6 scl enable devtoolset-9 bash
-7 #长期有效
-8 echo "source /opt/rh/devtoolset-9/enable" >>/etc/profile
+-------环境设置----------
+#临时有效，退出 shell 或重启会恢复原 gcc 版本
+scl enable devtoolset-9 bash
+#长期有效
+echo "source /opt/rh/devtoolset-9/enable" >>/etc/profile
 
 ```
 
@@ -606,3 +606,239 @@ mkdir /usr/local/maven/repo
 ![image-20230425213816409](assest/image-20230425213816409.png)
 
 `:wq`保存并退出
+
+
+
+# Mysql安装与配置
+
+## 检查是否安装果mysql
+
+> ps:因为以前用yum安装过，所以先用yum卸载。如果不是此方式或者没安装过则跳过
+
+```bash
+yum remove mysql
+```
+
+> 查看是否有mysql依赖 有的话则卸载
+
+```
+rpm -qa | grep mysql
+```
+
+```
+//普通删除模式
+rpm -e xxx(mysql_libs)
+//强力删除模式,如果上述命令删除时，提示有依赖其他文件，则可以用该命令对其进行强力删除
+rpm -e --nodeps xxx(mysql_libs)
+
+```
+
+> 检查是否有mariadb
+
+```
+rpm -qa | grep mariadb
+
+
+```
+
+![image-20230503203209437](assest/image-20230503203209437.png)
+
+> 有则卸载
+
+```bash
+rpm -e --nodeps mariadb-libs-5.5.68-1.el7.x86_64
+```
+
+## 安装MySQL Server
+
+### 添加国内安装源并安装
+
+切换目录，如果没有，需新建：
+
+```
+mkdir /usr/local/mysql
+
+cd /usr/local/mysql
+
+```
+
+
+
+下载：
+
+```
+wget http://mirrors.tuna.tsinghua.edu.cn/mysql/yum/mysql80-community-el7/mysql80-community-release-el7-1.noarch.rpm
+
+```
+
+安装：
+
+```
+rpm -ivh mysql80-community-release-el7-1.noarch.rpm
+
+```
+
+下载完成后，yum安装：
+
+```
+yum install mysql-server
+
+```
+
+
+
+### 遇到问题：
+
+![image-20230503210641324](assest/image-20230503210641324.png)
+
+### 解决问题：
+
+参考博客：[解决CentOS yum安装Mysql8提示“公钥尚未安装”或“密钥已安装，但是不适用于此软件包”的问题_一介布衣萧萧的博客-CSDN博客](https://blog.csdn.net/brantyou/article/details/124114996)
+
+#### 这个时候可参考官网的做法：
+
+> 检查包的签名
+
+![image-20230503211016840](assest/image-20230503211016840.png)
+
+```bash
+rpm --checksig package_name.rpm # 包名.rpm 需要找到包所在位置
+
+cd /var/cache/yum/x86_64/7/mysql80-community/packages
+
+# 例如
+rpm --checksig mysql-community-server-8.0.33-1.el7.x86_64.rpm
+```
+
+![image-20230503212020187](assest/image-20230503212020187.png)
+
+> ps:chicken: 此时MD5 是错误的
+
+通以下命令更新密钥：
+
+```bash
+gpg --export -a 3a79bd29 > 3a79bd29.asc
+rpm --import 3a79bd29.asc # 如果这个命令不行更换下面那条
+
+rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
+```
+
+
+
+运行成功后 出现截图所示结果代表成功：
+
+```
+rpm --checksig mysql-community-server-8.0.33-1.el7.x86_64.rpm
+```
+
+![image-20230503212130037](assest/image-20230503212130037.png)
+
+
+
+成功之后再次运行：
+
+```
+yum install mysql-community-server
+```
+
+
+
+## mysql启动
+
+- [ ] #### 检查是否已经设置为开机启动MySQL服务
+
+```
+systemctl list-unit-files|grep mysqld
+
+```
+
+![image-20230503212411402](assest/image-20230503212411402.png)
+
+> 表示已成功设置为开机自启动，如果没有设置为开机启动则执行
+
+```
+systemctl enable mysqld.service
+
+```
+
+
+
+- [ ] #### 启动MySQL
+
+```
+systemctl start mysqld.service
+
+```
+
+- [ ] #### 初始化
+
+```
+mysqld --initialize
+
+```
+
+- [ ] #### 查看默认密码
+
+```
+grep 'temporary password' /var/log/mysqld.log
+
+```
+
+localhost后面的最后的那一大串字符，就是密码，复制下来。
+
+- [ ] #### 登录
+
+  ```
+  mysql -uroot -p
+  ```
+
+- [ ] #### 重置root密码
+
+  ```mysql
+  # 需要先设置一个复杂的密码，不然无法进行下一步操作
+  # 大小写字母数字以及特殊符号
+  # 例如： AAaa..123
+  
+  ALTER USER 'root'@'localhost' identified by 'AAaa..123';
+  ```
+
+  > ps: 密码不能为 root
+
+![image-20230503213011593](assest/image-20230503213011593.png)
+
+> 此时无法修改密码，由于myql8的隐私政策 密码不能太简单，因此需要修改相关配置
+
+[参考博客--mysql8.0密码策略](https://blog.csdn.net/weixin_49891946/article/details/120791640#:~:text=MySQL8.0%E7%9A%84%E5%AF%86%E7%A0%81%E7%AD%96%E7%95%A5%E5%8F%AF%E4%BB%A5%E4%BD%BF%E7%94%A8%E4%BB%A5%E4%B8%8B%E5%91%BD%E4%BB%A4%E6%9F%A5%E7%9C%8B%E5%92%8C%E4%BF%AE%E6%94%B9%201%201.%E6%9F%A5%E7%9C%8B%E5%AF%86%E7%A0%81%E7%AD%96%E7%95%A5%20--MySQL%E7%99%BB%E5%BD%95%E5%90%8E%E4%BD%BF%E7%94%A8%E8%BF%99%E4%B8%AA%E5%91%BD%E4%BB%A4%E6%9F%A5%E7%9C%8B%E5%AF%86%E7%A0%81%E7%AD%96%E7%95%A5%20show%20variables%20like%20%27validate%25%27%3B,set%20global%20validate_password.mixed_case_count%3D1%3B%20--%E5%AF%86%E7%A0%81%E8%87%B3%E5%B0%91%E8%A6%81%E5%8C%85%E5%90%AB%E7%9A%84%E6%95%B0%E5%AD%97%E4%B8%AA%E6%95%B0%E3%80%82%20...%203%203.%E6%94%B9%E5%AE%8C%E5%AF%86%E7%A0%81%E7%AD%96%E7%95%A5%EF%BC%8C%E5%B0%B1%E5%8F%AF%E4%BB%A5%E6%A0%B9%E6%8D%AE%E8%87%AA%E5%B7%B1%E4%BF%AE%E6%94%B9%E7%9A%84%E7%AD%96%E7%95%A5%EF%BC%8C%E6%9B%B4%E6%94%B9%E5%8C%B9%E9%85%8D%E7%AD%96%E7%95%A5%E7%9A%84MySQL%E7%99%BB%E5%BD%95%E5%AF%86%E7%A0%81%E4%BA%86%20)
+
+```mysql
+-- 查看密码策略
+show variables like 'validate%';
+
+-- 修改策略
+set global validate_password.policy=0;
+set global validate_password.length=4;
+set global validate_password.mixed_case_count=0;
+set global validate_password.number_count=0;
+set global validate_password.special_char_count=0；
+
+```
+
+执行上面的设置后才能设置简单密码：
+
+```mysql
+ALTER USER 'root'@'localhost' identified by '123456';
+```
+
+- [ ] #### 新建用户
+
+  ```mysql
+  -- 创建用户
+  create user 'user'@'%' identified by '123456';
+  
+  -- 授权
+  GRANT ALL PRIVILEGES ON *.* TO 'user'@'%' WITH GRANT OPTION;
+  
+  ```
+
+  
+
